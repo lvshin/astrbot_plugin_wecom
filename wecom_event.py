@@ -1,9 +1,10 @@
-import os
+import os, uuid, pydub
 from astrbot.api.event import AstrMessageEvent, MessageChain
 from astrbot.api.platform import AstrBotMessage, PlatformMetadata, MessageType
-from astrbot.api.message_components import Plain, Image, Reply, At
+from astrbot.api.message_components import Plain, Image, Reply, At, Record
 from wechatpy.enterprise import WeChatClient
-from astrbot.core.utils.io import save_temp_img, download_image_by_url
+from astrbot.core.utils.io import save_temp_img, download_image_by_url, download_file
+
 from astrbot.api import logger
 
 class WecomPlatformEvent(AstrMessageEvent):
@@ -52,6 +53,34 @@ class WecomPlatformEvent(AstrMessageEvent):
                         return
                     logger.info(f"企业微信上传图片返回: {response}")
                     self.client.message.send_image(
+                        message_obj.self_id,
+                        message_obj.session_id,
+                        response["media_id"]
+                    )
+            elif isinstance(comp, Record):
+                record_url = comp.file
+                record_path = ""
+                
+                if record_url.startswith("file:///"):
+                    record_path = record_url[8:]
+                elif record_url.startswith("http"):
+                    await download_file(record_url, f"data/temp/{uuid.uuid4()}.wav")
+                else:
+                    record_path = record_url
+                    
+                # 转成amr
+                record_path_amr = f"data/temp/{uuid.uuid4()}.amr"
+                pydub.AudioSegment.from_wav(record_path).export(record_path_amr, format="amr")
+                
+                with open(record_path_amr, 'rb') as f:
+                    try:
+                        response = self.client.media.upload("voice", f)
+                    except Exception as e:
+                        logger.error(f"企业微信上传语音失败: {e}")
+                        await self.send(MessageChain().message(f"企业微信上传语音失败: {e}"))
+                        return
+                    logger.info(f"企业微信上传语音返回: {response}")
+                    self.client.message.send_voice(
                         message_obj.self_id,
                         message_obj.session_id,
                         response["media_id"]

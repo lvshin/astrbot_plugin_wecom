@@ -2,6 +2,8 @@ import sys
 import uuid
 import asyncio
 import quart
+from pydub import AudioSegment
+
 
 from astrbot.api.platform import Platform, AstrBotMessage, MessageMember, PlatformMetadata, MessageType
 from astrbot.api.event import MessageChain
@@ -9,6 +11,7 @@ from astrbot.api.message_components import Plain, Image, Record
 from astrbot.core.platform.astr_message_event import MessageSesion
 from astrbot.api.platform import register_platform_adapter
 from astrbot.core import logger
+from requests import Response
 
 from wechatpy.enterprise.crypto import WeChatCrypto
 from wechatpy.enterprise import WeChatClient
@@ -171,6 +174,41 @@ class WecomPlatformAdapter(Platform):
             abm.timestamp = msg.time
             abm.session_id = abm.sender.user_id
             abm.raw_message = msg
+        elif msg.type == 'voice':
+            assert isinstance(msg, VoiceMessage)
+            
+            resp: Response = await asyncio.get_event_loop().run_in_executor(
+                None, 
+                self.client.media.download,
+                msg.media_id
+            )
+            path = f"data/temp/wecom_{msg.media_id}.amr"
+            with open(path, 'wb') as f:
+                f.write(resp.content)
+            
+            try:
+                path_wav = f"data/temp/wecom_{msg.media_id}.wav"
+                audio = AudioSegment.from_file(path)
+                audio.export(path_wav, format="wav")
+            except Exception as e:
+                logger.error(f"转换音频失败: {e}。如果没有安装 ffmpeg 请先安装。")
+                path_wav = path
+                return
+            
+            abm.message_str = ""
+            abm.self_id = str(msg.agent)
+            abm.message = [Record(file=path_wav, url=path_wav)]
+            abm.type = MessageType.FRIEND_MESSAGE
+            abm.sender = MessageMember(
+                msg.source,
+                msg.source,
+            )
+            abm.message_id = msg.id
+            abm.timestamp = msg.time
+            abm.session_id = abm.sender.user_id
+            abm.raw_message = msg
+            
+            
         
         logger.info(f"abm: {abm}")
         await self.handle_msg(abm)
