@@ -145,6 +145,7 @@ class WecomPlatformAdapter(Platform):
                 "http": self.http_proxy,
                 "https": self.http_proxy
             }
+            logger.info(f"企业微信 适配器设置代理: {self.http_proxy}")
         
         async def callback(msg):
             await self.convert_message(msg)
