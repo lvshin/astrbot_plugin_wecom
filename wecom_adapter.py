@@ -143,6 +143,7 @@ class WecomPlatformAdapter(Platform):
         if self.http_proxy:
             self.client._http.proxies = {
                 "http": self.http_proxy,
+                "https": self.http_proxy
             }
         
         async def callback(msg):
