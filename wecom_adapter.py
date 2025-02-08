@@ -106,7 +106,7 @@ class WecomServer():
     "port": 6195,
     "token": "",
     "encoding_aes_key": "",
-    "push_http_proxy": "",
+    "api_base_url": "https://qyapi.weixin.qq.com",
 })
 class WecomPlatformAdapter(Platform):
     def __init__(self, platform_config: dict, platform_settings: dict, event_queue: asyncio.Queue) -> None:
@@ -114,8 +114,7 @@ class WecomPlatformAdapter(Platform):
         self.config = platform_config
         self.settingss = platform_settings
         self.client_self_id = uuid.uuid4().hex[:8]
-        
-        self.http_proxy = platform_config.get("push_http_proxy")
+        self.api_base_url = platform_config.get("api_base_url", "https://qyapi.weixin.qq.com")
         
     @override
     async def send_by_session(self, session: MessageSesion, message_chain: MessageChain):
@@ -139,13 +138,7 @@ class WecomPlatformAdapter(Platform):
             self.config['corpid'],
             self.config['secret'],
         )
-        
-        if self.http_proxy:
-            self.client._http.proxies = {
-                "http": self.http_proxy,
-                "https": self.http_proxy
-            }
-            logger.info(f"企业微信 适配器设置代理: {self.http_proxy}")
+        self.client.API_BASE_URL = self.api_base_url
         
         async def callback(msg):
             await self.convert_message(msg)
