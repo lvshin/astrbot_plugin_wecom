@@ -1,4 +1,4 @@
-import os, uuid, pydub
+import os, uuid
 from astrbot.api.event import AstrMessageEvent, MessageChain
 from astrbot.api.platform import AstrBotMessage, PlatformMetadata, MessageType
 from astrbot.api.message_components import Plain, Image, Reply, At, Record
@@ -6,6 +6,12 @@ from wechatpy.enterprise import WeChatClient
 from astrbot.core.utils.io import save_temp_img, download_image_by_url, download_file
 
 from astrbot.api import logger
+
+try:
+    import pydub
+except Exception:
+    logger.warning("检测到 pydub 没安装，企业微信将无法语音收发")
+    pass
 
 class WecomPlatformEvent(AstrMessageEvent):
     def __init__(
