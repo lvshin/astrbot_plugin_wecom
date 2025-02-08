@@ -2,7 +2,6 @@ import sys
 import uuid
 import asyncio
 import quart
-from pydub import AudioSegment
 
 
 from astrbot.api.platform import Platform, AstrBotMessage, MessageMember, PlatformMetadata, MessageType
@@ -106,7 +105,7 @@ class WecomServer():
     "port": 6195,
     "token": "",
     "encoding_aes_key": "",
-    "api_base_url": "https://qyapi.weixin.qq.com",
+    "api_base_url": "https://qyapi.weixin.qq.com/cgi-bin/",
 })
 class WecomPlatformAdapter(Platform):
     def __init__(self, platform_config: dict, platform_settings: dict, event_queue: asyncio.Queue) -> None:
@@ -114,7 +113,18 @@ class WecomPlatformAdapter(Platform):
         self.config = platform_config
         self.settingss = platform_settings
         self.client_self_id = uuid.uuid4().hex[:8]
-        self.api_base_url = platform_config.get("api_base_url", "https://qyapi.weixin.qq.com")
+        self.api_base_url = platform_config.get("api_base_url", "https://qyapi.weixin.qq.com/cgi-bin/")
+        
+        if not self.api_base_url:
+            self.api_base_url = "https://qyapi.weixin.qq.com/cgi-bin/"
+            
+        if self.api_base_url.endswith("/"):
+            self.api_base_url = self.api_base_url[:-1]
+        if not self.api_base_url.endswith("/cgi-bin"):
+            self.api_base_url += "/cgi-bin"
+            
+        if not self.api_base_url.endswith("/"):
+            self.api_base_url += "/"
         
     @override
     async def send_by_session(self, session: MessageSesion, message_chain: MessageChain):
@@ -190,6 +200,8 @@ class WecomPlatformAdapter(Platform):
                 f.write(resp.content)
             
             try:
+                from pydub import AudioSegment
+
                 path_wav = f"data/temp/wecom_{msg.media_id}.wav"
                 audio = AudioSegment.from_file(path)
                 audio.export(path_wav, format="wav")
