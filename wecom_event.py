@@ -35,7 +35,7 @@ class WecomPlatformEvent(AstrMessageEvent):
         
         for comp in message.chain:
             if isinstance(comp, Plain):
-                self.client.message.send_text(
+                self.client.message.send_markdown(
                     message_obj.self_id,
                     message_obj.session_id,
                     comp.text
